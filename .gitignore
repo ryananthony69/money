@@ -1,4 +1,21 @@
+# Node modules
+node_modules/
+
+# Logs
 *.log
-*.bak
-node_modules
-*.env
+
+# Environment files
+.env
+
+# System files
+Thumbs.db
+.DS_Store
+
+# IDE/Editor files
+.vscode/
+.idea/
+
+# Windows Installer files
+*.cab
+*.msi
+*.exe
