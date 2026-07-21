@@ -1,8 +1,6 @@
-name: Generate Infinite Money Glitch UGC Video V2
+name: Generate Infinite Money Glitch UGC Video V4
 
 on:
-  push:
-    branches: [master]
   pull_request:
     branches: [master]
   workflow_dispatch:
@@ -11,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  generate-video-v2:
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 45
+  generate-video-v4:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
 
     steps:
       - name: Check out repository
@@ -24,79 +22,92 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install media and neural voice dependencies
+      - name: Install media, natural voice, and LivePortrait client
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg espeak-ng libsndfile1 fonts-dejavu-core fonts-liberation
           python -m pip install --upgrade pip
-          pip install kokoro-onnx soundfile gdown==5.2.0 numpy Pillow
+          pip install kokoro-onnx soundfile gdown==5.2.0 numpy Pillow "gradio_client>=1.12,<2"
 
-      - name: Download Kokoro neural voice model
+      - name: Restore and patch pinned renderer
         run: |
-          mkdir -p models
+          curl -fL --retry 4 --retry-delay 3 \
+            -o render_v3.py \
+            https://raw.githubusercontent.com/ryananthony69/money/6a7b1e350b77079e5044b0b2932d875b48ab69ba/render_v3.py
+          python patch_liveportrait.py
+          python -m py_compile render_v3.py
+
+      - name: Download Kokoro voice model and LivePortrait driver
+        run: |
+          mkdir -p models assets
           curl -fL --retry 4 --retry-delay 3 \
             -o models/kokoro-v1.0.int8.onnx \
             https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx
           curl -fL --retry 4 --retry-delay 3 \
             -o models/voices-v1.0.bin \
             https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+          curl -fL --retry 4 --retry-delay 3 \
+            -o assets/liveportrait-driving.mp4 \
+            https://huggingface.co/spaces/KlingTeam/LivePortrait/resolve/main/assets/examples/driving/d0.mp4
           test -s models/kokoro-v1.0.int8.onnx
           test -s models/voices-v1.0.bin
+          test -s assets/liveportrait-driving.mp4
 
-      - name: Generate animated AI creator UGC video
+      - name: Generate moving AI creator and final Methods edit
         env:
           KOKORO_VOICE: am_michael
-          KOKORO_SPEED: "1.04"
-          FINAL_PRESET: medium
-          FINAL_CRF: "17"
+          KOKORO_SPEED: "1.03"
+          TALKING_HEAD_SPACE: innoai/LivePortrait
         run: |
           set -o pipefail
-          if [ -f patch_mouth.py ]; then python patch_mouth.py; fi
-          python render.py 2>&1 | tee render.log
+          python render_v3.py 2>&1 | tee render-v4.log
 
-      - name: Validate generated media
+      - name: Validate final media and provenance
         run: |
-          test -s output/infinite-money-glitch-ugc-v2.mp4
-          test -s output/thumbnail-v2.jpg
-          test -s output/report-v2.json
+          test -s output/infinite-money-glitch-ugc-v3.mp4
+          test -s output/thumbnail-v3.jpg
+          test -s output/report-v3.json
           ffprobe -v error -select_streams v:0 \
             -show_entries stream=codec_name,width,height,r_frame_rate \
-            -of default=noprint_wrappers=1 output/infinite-money-glitch-ugc-v2.mp4
+            -of default=noprint_wrappers=1 output/infinite-money-glitch-ugc-v3.mp4
           ffprobe -v error -select_streams a:0 \
             -show_entries stream=codec_name,sample_rate,channels \
-            -of default=noprint_wrappers=1 output/infinite-money-glitch-ugc-v2.mp4
+            -of default=noprint_wrappers=1 output/infinite-money-glitch-ugc-v3.mp4
           python - <<'PY'
           import json
           from pathlib import Path
-          report = json.loads(Path('output/report-v2.json').read_text())
+          report = json.loads(Path('output/report-v3.json').read_text())
           assert report['resolution'] == '1080x1920'
           assert report['voice_engine'] == 'Kokoro ONNX'
           assert report['robotic_fallback'] is False
-          assert report['creator_screen_share_percent'] >= 50
+          assert report['still_image_mouth_warp'] is False
+          assert report['talking_head_engine'] == 'innoai/LivePortrait'
           print(report)
           PY
 
-      - name: Upload render diagnostics
-        if: always()
+      - name: Upload final V4 video artifact
         uses: actions/upload-artifact@v4
         with:
-          name: infinite-money-glitch-ugc-v2-diagnostics
+          name: infinite-money-glitch-ugc-v4
           path: |
-            render.log
-            output/*
-            work/narration*.wav
-            work/captions.ass
+            output/infinite-money-glitch-ugc-v3.mp4
+            output/thumbnail-v3.jpg
+            output/transcript-v3.txt
+            output/report-v3.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: infinite-money-glitch-v4-diagnostics
+          path: |
+            render-v4.log
+            work-v3/voice.wav
+            work-v3/creator-square.jpg
+            work-v3/liveportrait-generated.mp4
+            work-v3/talking-head.mp4
           if-no-files-found: warn
           retention-days: 7
-
-      - name: Upload final V2 video artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: infinite-money-glitch-ugc-v2
-          path: |
-            output/infinite-money-glitch-ugc-v2.mp4
-            output/thumbnail-v2.jpg
-            output/transcript-v2.txt
-            output/report-v2.json
-          if-no-files-found: error
-          retention-days: 30
