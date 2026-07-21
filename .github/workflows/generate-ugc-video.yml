@@ -1,8 +1,6 @@
-name: Generate Infinite Money Glitch UGC Video V2
+name: Generate Infinite Money Glitch UGC Video V3
 
 on:
-  push:
-    branches: [master]
   pull_request:
     branches: [master]
   workflow_dispatch:
@@ -11,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  generate-video-v2:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+  generate-video-v3:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
 
     steps:
       - name: Check out repository
@@ -24,12 +22,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install media and neural voice dependencies
+      - name: Install media, natural voice, and talking-head client
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg espeak-ng libsndfile1 fonts-dejavu-core fonts-liberation
           python -m pip install --upgrade pip
-          pip install kokoro-onnx soundfile gdown==5.2.0 numpy Pillow
+          pip install kokoro-onnx soundfile gdown==5.2.0 numpy Pillow gradio_client
 
       - name: Download Kokoro neural voice model
         run: |
@@ -43,44 +41,60 @@ jobs:
           test -s models/kokoro-v1.0.int8.onnx
           test -s models/voices-v1.0.bin
 
-      - name: Generate AI creator UGC video
+      - name: Generate model-driven AI creator video
         env:
           KOKORO_VOICE: am_michael
-          KOKORO_SPEED: "1.04"
-          FINAL_PRESET: medium
-          FINAL_CRF: "17"
-        run: python render.py
-
-      - name: Validate generated media
+          KOKORO_SPEED: "1.03"
+          TALKING_HEAD_SPACE: Beer1819/LipSyncerFull
         run: |
-          test -s output/infinite-money-glitch-ugc-v2.mp4
-          test -s output/thumbnail-v2.jpg
-          test -s output/report-v2.json
+          set -o pipefail
+          python render_v3.py 2>&1 | tee render-v3.log
+
+      - name: Validate final media and model provenance
+        run: |
+          test -s output/infinite-money-glitch-ugc-v3.mp4
+          test -s output/thumbnail-v3.jpg
+          test -s output/report-v3.json
           ffprobe -v error -select_streams v:0 \
             -show_entries stream=codec_name,width,height,r_frame_rate \
-            -of default=noprint_wrappers=1 output/infinite-money-glitch-ugc-v2.mp4
+            -of default=noprint_wrappers=1 output/infinite-money-glitch-ugc-v3.mp4
           ffprobe -v error -select_streams a:0 \
             -show_entries stream=codec_name,sample_rate,channels \
-            -of default=noprint_wrappers=1 output/infinite-money-glitch-ugc-v2.mp4
+            -of default=noprint_wrappers=1 output/infinite-money-glitch-ugc-v3.mp4
           python - <<'PY'
           import json
           from pathlib import Path
-          report = json.loads(Path('output/report-v2.json').read_text())
+          report = json.loads(Path('output/report-v3.json').read_text())
           assert report['resolution'] == '1080x1920'
           assert report['voice_engine'] == 'Kokoro ONNX'
           assert report['robotic_fallback'] is False
-          assert report['creator_screen_share_percent'] >= 50
+          assert report['still_image_mouth_warp'] is False
+          assert 'LipSyncer' in report['talking_head_engine']
           print(report)
           PY
 
-      - name: Upload final V2 video artifact
+      - name: Upload final V3 video artifact
         uses: actions/upload-artifact@v4
         with:
-          name: infinite-money-glitch-ugc-v2
+          name: infinite-money-glitch-ugc-v3
           path: |
-            output/infinite-money-glitch-ugc-v2.mp4
-            output/thumbnail-v2.jpg
-            output/transcript-v2.txt
-            output/report-v2.json
+            output/infinite-money-glitch-ugc-v3.mp4
+            output/thumbnail-v3.jpg
+            output/transcript-v3.txt
+            output/report-v3.json
           if-no-files-found: error
+          compression-level: 0
           retention-days: 30
+
+      - name: Upload diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: infinite-money-glitch-v3-diagnostics
+          path: |
+            render-v3.log
+            work-v3/voice.wav
+            work-v3/creator-square.jpg
+            work-v3/talking-head.mp4
+          if-no-files-found: warn
+          retention-days: 7
