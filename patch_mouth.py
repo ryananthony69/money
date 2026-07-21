@@ -9,9 +9,9 @@ motion_replacement = '''def make_static_motion(source: Path, output: Path, durat
     if creator:
         filter_complex = (
             "[0:v]fps=30,scale=1080:1920,split=2[base][m];"
-            "[m]crop=380:220:350:910,"
-            "scale=380:'170+35*abs(sin(n*0.42))':eval=frame[mouth];"
-            "[base][mouth]overlay=350:'910+(220-h)/2':shortest=1,"
+            "[m]crop=240:105:420:1040,"
+            "scale=240:'75+22*abs(sin(n*0.42))':eval=frame[mouth];"
+            "[base][mouth]overlay=420:'1040+(105-h)/2':shortest=1,"
             "scale=1120:1992,"
             "crop=1080:1920:'20+5*sin(n/13)':'36+5*cos(n/15)',"
             "eq=contrast=1.035:saturation=1.04,format=yuv420p[v]"
@@ -66,4 +66,4 @@ source = source[:music_start] + music_replacement + source[music_end:]
 
 path.write_text(source, encoding="utf-8")
 compile(source, str(path), "exec")
-print("Applied animated-mouth creator and portable music patches")
+print("Applied seam-reduced animated-mouth creator and portable music patches")
