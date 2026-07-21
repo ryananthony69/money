@@ -1,6 +1,8 @@
 name: Generate Infinite Money Glitch UGC Video V3
 
 on:
+  push:
+    branches: [render/ai-creator-v2]
   pull_request:
     branches: [master]
   workflow_dispatch:
