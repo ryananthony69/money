@@ -1,0 +1,60 @@
+name: Probe Generative Video APIs
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/probe-video-spaces.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Inspect live Gradio APIs
+        run: |
+          pip install "gradio_client>=1.8,<2" huggingface_hub
+          python - <<'PY'
+          import json, traceback
+          from gradio_client import Client
+
+          spaces = [
+              "multimodalart/wan2-1-fast",
+              "r3gm/wan2-2-fp8da-aoti-preview",
+              "zerogpu-aoti/wan2-2-14b-fast",
+              "Lightricks/ltx-video-fast",
+              "Pyramid-Flow/pyramid-flow",
+              "KingNish/Instant-Video",
+          ]
+          out = {}
+          for space in spaces:
+              try:
+                  client = Client(space, verbose=False)
+                  out[space] = {
+                      "status": "ok",
+                      "api": client.view_api(return_format="dict"),
+                  }
+              except Exception as exc:
+                  out[space] = {
+                      "status": "error",
+                      "error": repr(exc),
+                      "traceback": traceback.format_exc(),
+                  }
+          with open("video-space-probe.json", "w", encoding="utf-8") as f:
+              json.dump(out, f, indent=2, default=str)
+          PY
+      - name: Commit probe report
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add video-space-probe.json
+          git commit -m "Video API probe complete $GITHUB_RUN_ID [skip ci]" || exit 0
+          git push
