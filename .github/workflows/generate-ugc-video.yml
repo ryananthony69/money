@@ -54,7 +54,7 @@ jobs:
         env:
           KOKORO_VOICE: am_michael
           KOKORO_SPEED: "1.03"
-          TALKING_HEAD_SPACES: Beer1819/LipSyncerFull,peterpeter8585/LipSyncer
+          TALKING_HEAD_SPACES: Beer1819/LipSyncerFull,peterpeter8585/LipSyncer,kevinwang676/SadTalker
           TALKING_HEAD_CHUNK_SECONDS: "8.0"
         run: |
           set -o pipefail
