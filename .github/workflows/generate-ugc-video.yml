@@ -57,7 +57,7 @@ jobs:
         env:
           KOKORO_VOICE: am_michael
           KOKORO_SPEED: "1.03"
-          TALKING_HEAD_SPACE: KlingTeam/LivePortrait
+          TALKING_HEAD_SPACE: innoai/LivePortrait
         run: |
           set -o pipefail
           python render_v3.py 2>&1 | tee render-v4.log
@@ -81,7 +81,7 @@ jobs:
           assert report['voice_engine'] == 'Kokoro ONNX'
           assert report['robotic_fallback'] is False
           assert report['still_image_mouth_warp'] is False
-          assert report['talking_head_engine'] == 'KlingTeam/LivePortrait'
+          assert report['talking_head_engine'] == 'innoai/LivePortrait'
           print(report)
           PY
 
