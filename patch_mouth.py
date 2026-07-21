@@ -2,9 +2,10 @@ from pathlib import Path
 
 path = Path("render.py")
 source = path.read_text(encoding="utf-8")
+
 start = source.index("def make_static_motion(")
 end = source.index("\n\ndef make_app_clip", start)
-replacement = '''def make_static_motion(source: Path, output: Path, duration: float, *, creator: bool) -> None:
+motion_replacement = '''def make_static_motion(source: Path, output: Path, duration: float, *, creator: bool) -> None:
     if creator:
         filter_complex = (
             "[0:v]fps=30,scale=1080:1920,split=2[base][m];"
@@ -36,6 +37,33 @@ replacement = '''def make_static_motion(source: Path, output: Path, duration: fl
         "-crf", "18", str(output),
     ])
 '''
-path.write_text(source[:start] + replacement + source[end:], encoding="utf-8")
-compile(path.read_text(encoding="utf-8"), str(path), "exec")
-print("Applied animated-mouth creator patch")
+source = source[:start] + motion_replacement + source[end:]
+
+music_start = source.index("def create_music(")
+music_end = source.index("\n\ndef main", music_start)
+music_replacement = '''def create_music(duration: float) -> Path:
+    music = WORK_DIR / "music.m4a"
+    fade_out = max(0, duration - 2)
+    audio_filter = (
+        "[0:a]volume=0.060[a0];"
+        "[1:a]volume=0.028[a1];"
+        "[a0][a1]amix=inputs=2:duration=longest,"
+        "highpass=f=38,lowpass=f=2400,"
+        "afade=t=in:st=0:d=1.0:curve=tri,"
+        f"afade=t=out:st={fade_out:.3f}:d=2:curve=tri,"
+        "volume=0.34[m]"
+    )
+    run([
+        "ffmpeg", "-y",
+        "-f", "lavfi", "-i", f"sine=frequency=55:sample_rate=48000:duration={duration:.3f}",
+        "-f", "lavfi", "-i", f"sine=frequency=110:sample_rate=48000:duration={duration:.3f}",
+        "-filter_complex", audio_filter, "-map", "[m]",
+        "-c:a", "aac", "-b:a", "160k", str(music),
+    ])
+    return music
+'''
+source = source[:music_start] + music_replacement + source[music_end:]
+
+path.write_text(source, encoding="utf-8")
+compile(source, str(path), "exec")
+print("Applied animated-mouth creator and portable music patches")
