@@ -22,12 +22,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install media, natural voice, and talking-head client
+      - name: Install media, natural voice, and legacy talking-head client
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg espeak-ng libsndfile1 fonts-dejavu-core fonts-liberation
           python -m pip install --upgrade pip
-          pip install kokoro-onnx soundfile gdown==5.2.0 numpy Pillow gradio_client
+          pip install kokoro-onnx soundfile gdown==5.2.0 numpy Pillow
+          pip install "gradio_client==0.8.1" "websockets==11.0.3"
 
       - name: Restore and patch pinned V3 renderer
         run: |
