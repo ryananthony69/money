@@ -10,22 +10,23 @@ source = source.replace("lowpass=f=15000", "lowpass=f=11000")
 start = source.index("def endpoint_name(client)")
 end = source.index("\n\ndef ass_time", start)
 replacement = '''def generate_talking_head(image: Path, voice: Path) -> Path:
-    from gradio_client import Client, handle_file
+    from gradio_client import Client
 
     space = os.getenv("TALKING_HEAD_SPACE", "Beer1819/LipSyncerFull")
     client = Client(space, verbose=True)
     voice_duration = max(1, int(duration(voice)))
 
-    # The SadTalker generation route in this Space is the third unnamed
-    # endpoint (fn_index=2). The first two endpoints only toggle UI controls.
+    # This legacy Gradio 3.x Space uses the WebSocket queue protocol and
+    # expects ordinary local file paths. Generation is fn_index=2; the first
+    # two functions only toggle UI controls.
     result = client.predict(
-        handle_file(str(image)),
-        handle_file(str(voice)),
+        str(image),
+        str(voice),
         "crop",
         False,
         False,
         1,
-        "256",
+        256,
         2,
         "facevid2vid",
         1.15,
@@ -67,4 +68,4 @@ replacement = '''def generate_talking_head(image: Path, voice: Path) -> Path:
 source = source[:start] + replacement + source[end:]
 path.write_text(source, encoding="utf-8")
 compile(source, str(path), "exec")
-print("Applied V3 talking-head endpoint and audio-filter fixes")
+print("Applied V3 legacy WebSocket client and audio-filter fixes")
