@@ -35,7 +35,7 @@ jobs:
           curl -fL --retry 4 --retry-delay 3 \
             -o render_v3.py \
             https://raw.githubusercontent.com/ryananthony69/money/6a7b1e350b77079e5044b0b2932d875b48ab69ba/render_v3.py
-          python patch_v3.py
+          python patch_v3_chunked.py
           python -m py_compile render_v3.py
 
       - name: Download Kokoro natural voice model
@@ -50,11 +50,12 @@ jobs:
           test -s models/kokoro-v1.0.int8.onnx
           test -s models/voices-v1.0.bin
 
-      - name: Generate model-driven talking creator video
+      - name: Generate chunked model-driven talking creator video
         env:
           KOKORO_VOICE: am_michael
           KOKORO_SPEED: "1.03"
-          TALKING_HEAD_SPACE: peterpeter8585/LipSyncer
+          TALKING_HEAD_SPACES: Beer1819/LipSyncerFull,peterpeter8585/LipSyncer
+          TALKING_HEAD_CHUNK_SECONDS: "8.0"
         run: |
           set -o pipefail
           python render_v3.py 2>&1 | tee render-v3.log
@@ -105,5 +106,6 @@ jobs:
             work-v3/voice.wav
             work-v3/creator-square.jpg
             work-v3/talking-head.mp4
+            work-v3/talking-head-chunks/
           if-no-files-found: warn
           retention-days: 7
