@@ -50,8 +50,9 @@ jobs:
           FINAL_PRESET: medium
           FINAL_CRF: "17"
         run: |
+          set -o pipefail
           if [ -f patch_mouth.py ]; then python patch_mouth.py; fi
-          python render.py
+          python render.py 2>&1 | tee render.log
 
       - name: Validate generated media
         run: |
@@ -74,6 +75,19 @@ jobs:
           assert report['creator_screen_share_percent'] >= 50
           print(report)
           PY
+
+      - name: Upload render diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: infinite-money-glitch-ugc-v2-diagnostics
+          path: |
+            render.log
+            output/*
+            work/narration*.wav
+            work/captions.ass
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload final V2 video artifact
         uses: actions/upload-artifact@v4
