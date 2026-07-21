@@ -54,7 +54,7 @@ jobs:
         env:
           KOKORO_VOICE: am_michael
           KOKORO_SPEED: "1.03"
-          TALKING_HEAD_SPACE: Beer1819/LipSyncerFull
+          TALKING_HEAD_SPACE: peterpeter8585/LipSyncer
         run: |
           set -o pipefail
           python render_v3.py 2>&1 | tee render-v3.log
