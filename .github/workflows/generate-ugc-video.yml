@@ -43,13 +43,15 @@ jobs:
           test -s models/kokoro-v1.0.int8.onnx
           test -s models/voices-v1.0.bin
 
-      - name: Generate AI creator UGC video
+      - name: Generate animated AI creator UGC video
         env:
           KOKORO_VOICE: am_michael
           KOKORO_SPEED: "1.04"
           FINAL_PRESET: medium
           FINAL_CRF: "17"
-        run: python render.py
+        run: |
+          if [ -f patch_mouth.py ]; then python patch_mouth.py; fi
+          python render.py
 
       - name: Validate generated media
         run: |
