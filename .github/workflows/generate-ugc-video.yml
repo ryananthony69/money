@@ -1,4 +1,4 @@
-name: Generate Infinite Money Glitch UGC Video V3
+name: Generate Infinite Money Glitch UGC Video V4
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  generate-video-v3:
+  generate-video-v4:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
 
@@ -22,43 +22,45 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install media, natural voice, and legacy talking-head client
+      - name: Install media, natural voice, and LivePortrait client
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg espeak-ng libsndfile1 fonts-dejavu-core fonts-liberation
           python -m pip install --upgrade pip
-          pip install kokoro-onnx soundfile gdown==5.2.0 numpy Pillow
-          pip install "gradio_client==0.8.1" "websockets==11.0.3"
+          pip install kokoro-onnx soundfile gdown==5.2.0 numpy Pillow "gradio_client>=1.12,<2"
 
-      - name: Restore and patch pinned V3 renderer
+      - name: Restore and patch pinned renderer
         run: |
           curl -fL --retry 4 --retry-delay 3 \
             -o render_v3.py \
             https://raw.githubusercontent.com/ryananthony69/money/6a7b1e350b77079e5044b0b2932d875b48ab69ba/render_v3.py
-          python patch_v3_chunked.py
+          python patch_liveportrait.py
           python -m py_compile render_v3.py
 
-      - name: Download Kokoro natural voice model
+      - name: Download Kokoro voice model and LivePortrait driver
         run: |
-          mkdir -p models
+          mkdir -p models assets
           curl -fL --retry 4 --retry-delay 3 \
             -o models/kokoro-v1.0.int8.onnx \
             https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx
           curl -fL --retry 4 --retry-delay 3 \
             -o models/voices-v1.0.bin \
             https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+          curl -fL --retry 4 --retry-delay 3 \
+            -o assets/liveportrait-driving.mp4 \
+            https://huggingface.co/spaces/KlingTeam/LivePortrait/resolve/main/assets/examples/driving/d0.mp4
           test -s models/kokoro-v1.0.int8.onnx
           test -s models/voices-v1.0.bin
+          test -s assets/liveportrait-driving.mp4
 
-      - name: Generate chunked model-driven talking creator video
+      - name: Generate moving AI creator and final Methods edit
         env:
           KOKORO_VOICE: am_michael
           KOKORO_SPEED: "1.03"
-          TALKING_HEAD_SPACES: Beer1819/LipSyncerFull,peterpeter8585/LipSyncer,kevinwang676/SadTalker
-          TALKING_HEAD_CHUNK_SECONDS: "8.0"
+          TALKING_HEAD_SPACE: KlingTeam/LivePortrait
         run: |
           set -o pipefail
-          python render_v3.py 2>&1 | tee render-v3.log
+          python render_v3.py 2>&1 | tee render-v4.log
 
       - name: Validate final media and provenance
         run: |
@@ -79,14 +81,14 @@ jobs:
           assert report['voice_engine'] == 'Kokoro ONNX'
           assert report['robotic_fallback'] is False
           assert report['still_image_mouth_warp'] is False
-          assert 'LipSyncer' in report['talking_head_engine']
+          assert report['talking_head_engine'] == 'KlingTeam/LivePortrait'
           print(report)
           PY
 
-      - name: Upload final V3 video artifact
+      - name: Upload final V4 video artifact
         uses: actions/upload-artifact@v4
         with:
-          name: infinite-money-glitch-ugc-v3
+          name: infinite-money-glitch-ugc-v4
           path: |
             output/infinite-money-glitch-ugc-v3.mp4
             output/thumbnail-v3.jpg
@@ -100,12 +102,12 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: infinite-money-glitch-v3-diagnostics
+          name: infinite-money-glitch-v4-diagnostics
           path: |
-            render-v3.log
+            render-v4.log
             work-v3/voice.wav
             work-v3/creator-square.jpg
+            work-v3/liveportrait-generated.mp4
             work-v3/talking-head.mp4
-            work-v3/talking-head-chunks/
           if-no-files-found: warn
           retention-days: 7
