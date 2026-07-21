@@ -1,6 +1,8 @@
-name: Generate Infinite Money Glitch UGC Video
+name: Generate Infinite Money Glitch UGC Video V2
 
 on:
+  push:
+    branches: [master]
   pull_request:
     branches: [master]
   workflow_dispatch:
@@ -9,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  generate-video:
+  generate-video-v2:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -22,37 +24,63 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install media dependencies
+      - name: Install media and neural voice dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core fonts-liberation
+          sudo apt-get install -y ffmpeg espeak-ng libsndfile1 fonts-dejavu-core fonts-liberation
           python -m pip install --upgrade pip
-          pip install edge-tts==7.2.3 gdown==5.2.0
+          pip install kokoro-onnx soundfile gdown==5.2.0 numpy Pillow
 
-      - name: Generate vertical UGC video
+      - name: Download Kokoro neural voice model
+        run: |
+          mkdir -p models
+          curl -fL --retry 4 --retry-delay 3 \
+            -o models/kokoro-v1.0.int8.onnx \
+            https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx
+          curl -fL --retry 4 --retry-delay 3 \
+            -o models/voices-v1.0.bin \
+            https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+          test -s models/kokoro-v1.0.int8.onnx
+          test -s models/voices-v1.0.bin
+
+      - name: Generate AI creator UGC video
         env:
-          EDGE_TTS_VOICE: en-US-GuyNeural
+          KOKORO_VOICE: am_michael
+          KOKORO_SPEED: "1.04"
           FINAL_PRESET: medium
           FINAL_CRF: "17"
         run: python render.py
 
       - name: Validate generated media
         run: |
-          test -s output/infinite-money-glitch-ugc.mp4
-          ffprobe -v error \
-            -show_entries format=duration,size \
-            -show_entries stream=codec_type,codec_name,width,height \
-            -of json output/infinite-money-glitch-ugc.mp4
+          test -s output/infinite-money-glitch-ugc-v2.mp4
+          test -s output/thumbnail-v2.jpg
+          test -s output/report-v2.json
+          ffprobe -v error -select_streams v:0 \
+            -show_entries stream=codec_name,width,height,r_frame_rate \
+            -of default=noprint_wrappers=1 output/infinite-money-glitch-ugc-v2.mp4
+          ffprobe -v error -select_streams a:0 \
+            -show_entries stream=codec_name,sample_rate,channels \
+            -of default=noprint_wrappers=1 output/infinite-money-glitch-ugc-v2.mp4
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('output/report-v2.json').read_text())
+          assert report['resolution'] == '1080x1920'
+          assert report['voice_engine'] == 'Kokoro ONNX'
+          assert report['robotic_fallback'] is False
+          assert report['creator_screen_share_percent'] >= 50
+          print(report)
+          PY
 
-      - name: Upload final video artifact
+      - name: Upload final V2 video artifact
         uses: actions/upload-artifact@v4
         with:
-          name: infinite-money-glitch-ugc
+          name: infinite-money-glitch-ugc-v2
           path: |
-            output/infinite-money-glitch-ugc.mp4
-            output/thumbnail.jpg
-            output/transcript.txt
-            output/report.json
+            output/infinite-money-glitch-ugc-v2.mp4
+            output/thumbnail-v2.jpg
+            output/transcript-v2.txt
+            output/report-v2.json
           if-no-files-found: error
-          compression-level: 0
           retention-days: 30
