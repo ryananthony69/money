@@ -1,0 +1,63 @@
+name: Render Infinite Money Glitch UGC Video
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/render-ugc-fixed.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install media dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak fonts-dejavu-core fonts-liberation
+          python -m pip install --upgrade pip
+          pip install edge-tts==7.2.3 gdown==5.2.0 numpy==2.2.6 Pillow==11.3.0
+
+      - name: Restore tested generator
+        run: |
+          base64 --decode generator.py.gz.b64 | gzip --decompress --stdout > generate_video.py
+          python -m py_compile generate_video.py
+
+      - name: Generate 1080x1920 UGC video
+        env:
+          FINAL_PRESET: fast
+          FINAL_CRF: "18"
+        run: python generate_video.py
+
+      - name: Validate rendered media
+        run: |
+          test -s output/infinite-money-glitch-ugc.mp4
+          test -s output/thumbnail.jpg
+          test -s output/transcript.txt
+          test -s output/report.json
+          ffprobe -v error -show_entries stream=codec_type,codec_name,width,height -show_entries format=duration,size -of json output/infinite-money-glitch-ugc.mp4
+
+      - name: Upload completed video package
+        uses: actions/upload-artifact@v4
+        with:
+          name: infinite-money-glitch-ugc
+          path: |
+            output/infinite-money-glitch-ugc.mp4
+            output/thumbnail.jpg
+            output/transcript.txt
+            output/report.json
+          if-no-files-found: error
+          retention-days: 30
