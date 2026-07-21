@@ -185,7 +185,7 @@ def main() -> None:
     subtitle_filter = (
         f"subtitles={caption_path.as_posix()}:force_style='FontName=DejaVu Sans,FontSize=18,"
         "PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=2,"
-        "Shadow=1,Alignment=2,MarginV=265',"
+        "Shadow=1,Alignment=2,MarginV=55',"
         "drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
         "text='INFINITE MONEY GLITCH':fontcolor=white:fontsize=58:x=(w-text_w)/2:y=70:"
         "box=1:boxcolor=black@0.58:boxborderw=22,"
