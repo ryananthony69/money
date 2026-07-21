@@ -16,7 +16,6 @@ replacement = '''def generate_talking_head(image: Path, voice: Path) -> Path:
 
     client = Client(space, verbose=True)
     api_name = None
-    fn_index = None
     try:
         data = client.view_api(return_format="dict")
         named = data.get("named_endpoints", {}) if isinstance(data, dict) else {}
@@ -31,7 +30,6 @@ replacement = '''def generate_talking_head(image: Path, voice: Path) -> Path:
                 api_name = name
                 break
         if api_name is None and named:
-            # Prefer an endpoint exposing five inputs and two video outputs.
             for name, spec in named.items():
                 params = spec.get("parameters", []) if isinstance(spec, dict) else []
                 returns = spec.get("returns", []) if isinstance(spec, dict) else []
@@ -41,9 +39,16 @@ replacement = '''def generate_talking_head(image: Path, voice: Path) -> Path:
     except Exception as exc:
         print(f"LivePortrait API inspection warning: {exc}", flush=True)
 
+    # Gradio's current Video component expects a structured value rather than
+    # a bare file. The diagnostics from the first V4 run exposed this exact
+    # schema: Dict(video: filepath, subtitles: filepath | None).
+    video_value = {
+        "video": handle_file(str(driving)),
+        "subtitles": None,
+    }
     args = [
         handle_file(str(image)),
-        handle_file(str(driving)),
+        video_value,
         True,
         True,
         True,
@@ -55,17 +60,17 @@ replacement = '''def generate_talking_head(image: Path, voice: Path) -> Path:
     attempts.extend([
         ("api", "/gpu_wrapped_execute_video"),
         ("api", "/execute_video"),
-        ("fn", 0),
     ])
 
     result = None
+    tried = set()
     for mode, endpoint in attempts:
+        if (mode, endpoint) in tried:
+            continue
+        tried.add((mode, endpoint))
         try:
             print(f"Calling LivePortrait via {mode} endpoint {endpoint}", flush=True)
-            if mode == "api":
-                result = client.predict(*args, api_name=endpoint)
-            else:
-                result = client.predict(*args, fn_index=endpoint)
+            result = client.predict(*args, api_name=endpoint)
             break
         except Exception as exc:
             errors.append(f"{mode}:{endpoint}: {exc}")
@@ -115,4 +120,4 @@ replacement = '''def generate_talking_head(image: Path, voice: Path) -> Path:
 source = source[:start] + replacement + source[end:]
 path.write_text(source, encoding="utf-8")
 compile(source, str(path), "exec")
-print("Applied LivePortrait model-driven creator patch")
+print("Applied LivePortrait structured-video input patch")
