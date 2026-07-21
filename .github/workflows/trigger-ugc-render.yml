@@ -1,0 +1,21 @@
+name: Trigger Infinite Money Glitch UGC Render
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/trigger-ugc-render.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch-render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch production render
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run generate-ugc-video.yml --repo "${{ github.repository }}" --ref master
