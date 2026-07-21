@@ -29,11 +29,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install kokoro-onnx soundfile gdown==5.2.0 numpy Pillow gradio_client
 
-      - name: Restore pinned V3 renderer
+      - name: Restore and patch pinned V3 renderer
         run: |
           curl -fL --retry 4 --retry-delay 3 \
             -o render_v3.py \
             https://raw.githubusercontent.com/ryananthony69/money/6a7b1e350b77079e5044b0b2932d875b48ab69ba/render_v3.py
+          python patch_v3.py
           python -m py_compile render_v3.py
 
       - name: Download Kokoro natural voice model
